@@ -209,18 +209,27 @@ async function buildBody(itinerary, settings) {
 
   body.push(
     new Paragraph({
-      children: [
-        new TextRun({
-          text: itinerary.package_title || `${itinerary.destination} (${itinerary.duration})`,
-          bold: true,
-          italics: true,
-          highlight: 'yellow',
-          size: 26,
-        }),
-      ],
-      spacing: { after: 200 },
+      alignment: AlignmentType.CENTER,
+      children: [new TextRun({ text: itinerary.destination.toUpperCase(), bold: true, size: 32, color: RED })],
+      spacing: { after: 60 },
     }),
   )
+  body.push(
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      children: [new TextRun({ text: itinerary.duration || '', bold: true, italics: true, highlight: 'yellow', size: 24 })],
+      spacing: { after: 100 },
+    }),
+  )
+  if (itinerary.package_title) {
+    body.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        children: [new TextRun({ text: itinerary.package_title, bold: true, italics: true, size: 22 })],
+        spacing: { after: 200 },
+      }),
+    )
+  }
 
   const coverPhoto = itinerary.days.find((d) => d.photos?.length > 0)?.photos?.[0]
   if (coverPhoto) {
@@ -247,6 +256,7 @@ async function buildBody(itinerary, settings) {
   if (itinerary.departure_dates) {
     body.push(
       new Paragraph({
+        alignment: AlignmentType.CENTER,
         children: [new TextRun({ text: `Departure Date(s): ${itinerary.departure_dates}`, bold: true, italics: true, highlight: 'yellow' })],
         spacing: { after: 200 },
       }),

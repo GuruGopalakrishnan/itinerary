@@ -104,7 +104,7 @@ export default function ItineraryDashboard({ itineraries, templateCount, loading
                       <button
                         type="button"
                         className="icon-btn-sm"
-                        title="Download Word Doc"
+                        title="Download DOCX"
                         disabled={downloadingId === it.id}
                         onClick={() => handleDownload(it)}
                       >

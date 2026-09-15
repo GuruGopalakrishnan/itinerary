@@ -138,7 +138,18 @@ export default function TemplateEditorFields({ draft, setDraft }) {
             If the highlighted place's name appears in the activities above, it'll be bolded and yellow-highlighted
             automatically.
           </span>
-          <input type="file" accept="image/*" multiple onChange={(e) => addDayPhotos(i, e.target.files)} />
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input type="file" accept="image/*" multiple onChange={(e) => addDayPhotos(i, e.target.files)} />
+            <button
+              type="button"
+              className="btn-secondary"
+              disabled
+              title="Coming soon"
+              style={{ opacity: 0.6, cursor: 'default' }}
+            >
+              Generate Image (Coming Soon)
+            </button>
+          </div>
           {day.photos?.length > 0 && (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {day.photos.map((photo, pi) => (

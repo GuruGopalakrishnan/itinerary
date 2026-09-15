@@ -63,6 +63,11 @@ function App() {
     setOpenItineraryId(saved.id)
   }
 
+  async function handleUpdateItinerary(data) {
+    const saved = await updateItinerary(openItinerary.id, data)
+    setOpenItineraryId(saved.id)
+  }
+
   async function handleDeleteItinerary() {
     if (!confirm('Delete this itinerary?')) return
     await deleteItinerary(openItinerary.id)
@@ -121,6 +126,7 @@ function App() {
               settings={settings}
               onStatusChange={handleStatusChange}
               onDelete={handleDeleteItinerary}
+              onUpdate={handleUpdateItinerary}
             />
           )}
         </main>
@@ -128,7 +134,7 @@ function App() {
 
       {showNewModal && (
         <NewItineraryModal
-          templates={templates}
+          companyName={settings.company_name}
           onClose={() => setShowNewModal(false)}
           onCreate={handleCreateItinerary}
         />

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { buildItineraryDocx } from '../lib/buildDocx'
+import TemplateEditorFields from './TemplateEditorFields'
 
 function lines(text) {
   return (text || '').split('\n').map((l) => l.trim()).filter(Boolean)
@@ -78,7 +79,16 @@ function DocPage({ settings, children }) {
 
 const STATUSES = ['draft', 'sent', 'confirmed']
 
-export default function ItineraryPreview({ itinerary, settings, onStatusChange, onDelete }) {
+function toEditDraft(itinerary) {
+  return { ...itinerary, default_duration: itinerary.duration }
+}
+
+function fromEditDraft(draft) {
+  const { default_duration, ...rest } = draft
+  return { ...rest, duration: default_duration }
+}
+
+export default function ItineraryPreview({ itinerary, settings, onStatusChange, onDelete, onUpdate }) {
   const coverPhoto = itinerary.days.find((d) => d.photos?.length > 0)?.photos?.[0]
   const bookingTerms = lines(settings.booking_terms)
   const cancellationPolicy = lines(settings.cancellation_policy)
@@ -87,6 +97,9 @@ export default function ItineraryPreview({ itinerary, settings, onStatusChange, 
   const hasCostPage = (itinerary.cost_rows || []).length > 0 || itinerary.child_policy
   const hasTermsPage = bookingTerms.length > 0 || cancellationPolicy.length > 0 || importantNotes.length > 0
   const [downloading, setDownloading] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [editDraft, setEditDraft] = useState(null)
+  const [saving, setSaving] = useState(false)
 
   async function handleDownloadWord() {
     setDownloading(true)
@@ -101,6 +114,42 @@ export default function ItineraryPreview({ itinerary, settings, onStatusChange, 
     } finally {
       setDownloading(false)
     }
+  }
+
+  function startEditing() {
+    setEditDraft(toEditDraft(itinerary))
+    setEditing(true)
+  }
+
+  async function saveEditing() {
+    setSaving(true)
+    try {
+      await onUpdate(fromEditDraft(editDraft))
+      setEditing(false)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (editing && editDraft) {
+    return (
+      <div className="dashboard">
+        <div className="doc-actions-bar no-print">
+          <h2 style={{ margin: 0 }}>Live Edit</h2>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button type="button" className="btn-secondary" onClick={() => setEditing(false)}>
+              Cancel
+            </button>
+            <button type="button" className="btn-primary" disabled={saving} onClick={saveEditing}>
+              {saving ? 'Saving…' : 'Save Changes'}
+            </button>
+          </div>
+        </div>
+        <div className="tpl-editor">
+          <TemplateEditorFields draft={editDraft} setDraft={setEditDraft} />
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -127,18 +176,25 @@ export default function ItineraryPreview({ itinerary, settings, onStatusChange, 
           <button type="button" className="btn-secondary" onClick={onDelete}>
             Delete
           </button>
+          <button type="button" className="btn-secondary" onClick={startEditing}>
+            Live Edit
+          </button>
           <button type="button" className="btn-secondary" onClick={() => window.print()}>
-            Print / PDF
+            Download PDF
           </button>
           <button type="button" className="btn-primary" disabled={downloading} onClick={handleDownloadWord}>
-            {downloading ? 'Preparing…' : 'Download Word Doc'}
+            {downloading ? 'Preparing…' : 'Download DOCX'}
           </button>
         </div>
       </div>
 
       <div className="doc-shell">
         <DocPage settings={settings}>
-          <div className="doc-title-band">{itinerary.package_title || `${itinerary.destination} (${itinerary.duration})`}</div>
+          <div className="doc-cover-title">
+            <div className="doc-cover-destination">{itinerary.destination}</div>
+            <div className="doc-highlight doc-cover-duration">{itinerary.duration}</div>
+            {itinerary.package_title && <div className="doc-cover-package-title">{itinerary.package_title}</div>}
+          </div>
 
           {coverPhoto && (
             <div className="doc-hero-wrap">
@@ -154,7 +210,7 @@ export default function ItineraryPreview({ itinerary, settings, onStatusChange, 
           </div>
 
           {itinerary.departure_dates && (
-            <div className="doc-highlight" style={{ alignSelf: 'flex-start' }}>
+            <div className="doc-highlight" style={{ alignSelf: 'center' }}>
               Departure Date{itinerary.departure_dates.includes(',') ? 's' : ''}: {itinerary.departure_dates}
             </div>
           )}
