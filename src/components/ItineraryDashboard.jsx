@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { EditIcon, DownloadIcon } from './icons'
+import { EditIcon, DownloadIcon, TrashIcon } from './icons'
 import { buildItineraryDocx } from '../lib/buildDocx'
 
 function formatDate(iso) {
@@ -7,8 +7,13 @@ function formatDate(iso) {
   return new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-export default function ItineraryDashboard({ itineraries, templateCount, loading, settings, onOpen, onNew }) {
+export default function ItineraryDashboard({ itineraries, templateCount, loading, settings, onOpen, onNew, onDelete }) {
   const [downloadingId, setDownloadingId] = useState(null)
+
+  function handleDelete(it) {
+    if (!confirm(`Delete the itinerary for "${it.client_name}"?`)) return
+    onDelete(it.id)
+  }
 
   async function handleDownload(it) {
     setDownloadingId(it.id)
@@ -109,6 +114,9 @@ export default function ItineraryDashboard({ itineraries, templateCount, loading
                         onClick={() => handleDownload(it)}
                       >
                         <DownloadIcon />
+                      </button>
+                      <button type="button" className="icon-btn-sm" title="Delete" onClick={() => handleDelete(it)}>
+                        <TrashIcon />
                       </button>
                     </div>
                   </td>

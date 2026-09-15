@@ -105,6 +105,7 @@ function App() {
               settings={settings}
               onOpen={openPreview}
               onNew={() => setShowNewModal(true)}
+              onDelete={deleteItinerary}
             />
           )}
 
