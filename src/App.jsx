@@ -3,10 +3,12 @@ import Sidebar from './components/Sidebar'
 import Topbar from './components/Topbar'
 import ItineraryDashboard from './components/ItineraryDashboard'
 import TemplateLibrary from './components/TemplateLibrary'
+import SettingsPanel from './components/SettingsPanel'
 import NewItineraryModal from './components/NewItineraryModal'
 import ItineraryPreview from './components/ItineraryPreview'
 import { useTemplates } from './hooks/useTemplates'
 import { useItineraries } from './hooks/useItineraries'
+import { useSettings } from './hooks/useSettings'
 import './App.css'
 
 function App() {
@@ -23,7 +25,8 @@ function App() {
     updateItinerary,
     deleteItinerary,
   } = useItineraries()
-  const isDemo = templatesDemo || itinerariesDemo
+  const { settings, isDemo: settingsDemo, saveSettings } = useSettings()
+  const isDemo = templatesDemo || itinerariesDemo || settingsDemo
 
   const openItinerary = itineraries.find((it) => it.id === openItineraryId) || null
 
@@ -64,11 +67,16 @@ function App() {
       <Sidebar activeTab={activeTab === 'preview' ? 'itineraries' : activeTab} onTabChange={handleTabChange} />
 
       <div className="app-content">
-        <Topbar activeTab={activeTab} onNewItinerary={() => setShowNewModal(true)} onBack={backToItineraries} />
+        <Topbar
+          activeTab={activeTab}
+          openItinerary={openItinerary}
+          onNewItinerary={() => setShowNewModal(true)}
+          onBack={backToItineraries}
+        />
 
         <main className="app-main">
           {isDemo && (
-            <div className="hint-note" style={{ marginBottom: 20 }}>
+            <div className="hint-note no-print" style={{ marginBottom: 20 }}>
               Live preview with sample data — no backend is connected here, so changes won't be saved. Run{' '}
               <span style={{ fontFamily: 'monospace', background: 'var(--code-bg)', padding: '1px 5px', borderRadius: 4 }}>
                 npm run dev
@@ -96,9 +104,12 @@ function App() {
             />
           )}
 
+          {activeTab === 'settings' && <SettingsPanel settings={settings} onSave={saveSettings} />}
+
           {activeTab === 'preview' && openItinerary && (
             <ItineraryPreview
               itinerary={openItinerary}
+              settings={settings}
               onStatusChange={handleStatusChange}
               onDelete={handleDeleteItinerary}
             />

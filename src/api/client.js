@@ -24,4 +24,7 @@ export const api = {
   createItinerary: (data) => request('/itineraries', { method: 'POST', body: JSON.stringify(data) }),
   updateItinerary: (id, data) => request(`/itineraries/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteItinerary: (id) => request(`/itineraries/${id}`, { method: 'DELETE' }),
+
+  getSettings: () => request('/settings'),
+  updateSettings: (data) => request('/settings', { method: 'PUT', body: JSON.stringify(data) }),
 }

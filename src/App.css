@@ -650,140 +650,279 @@
   margin: 0;
 }
 
-/* Itinerary document / preview */
+/* Itinerary document / preview — matches the ABCD Holidays letterhead */
+
+:root {
+  --doc-red: #a41e28;
+  --doc-blue: #1e4d8f;
+  --doc-yellow: #ffe600;
+  --doc-pink: #f6d6d6;
+  --doc-pink-dark: #e8b7b7;
+}
+
+.doc-actions-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
 
 .doc-shell {
   background: var(--code-bg);
   border-radius: 14px;
   padding: 32px;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
 }
 
-.doc {
+.doc-page {
   width: 100%;
-  max-width: 780px;
-  background: var(--surface);
+  max-width: 794px;
+  min-height: 1050px;
+  background: #ffffff;
+  color: #1a1a1a;
   border: 1px solid var(--border);
-  border-radius: 14px;
   box-shadow: var(--shadow-lg);
-  padding: 48px 56px;
+  padding: 40px 48px;
+  display: flex;
+  flex-direction: column;
+  font-size: 13.5px;
+  line-height: 1.5;
 }
 
-.doc-header {
+.doc-page-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  padding-bottom: 24px;
-  border-bottom: 2px solid var(--accent);
-  margin-bottom: 28px;
   gap: 20px;
 }
 
-.doc-brand {
-  font-size: 20px;
-  font-weight: 300;
-  letter-spacing: 0.12em;
-  color: var(--text-h);
+.doc-logo {
+  height: 56px;
+  object-fit: contain;
 }
 
-.doc-brand-sub {
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--text);
-  margin-top: 4px;
+.doc-logo-placeholder {
+  height: 56px;
+  min-width: 56px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--doc-red);
+  color: #fff;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  border-radius: 8px;
+  padding: 0 10px;
 }
 
-.doc-title {
+.doc-company-block {
   text-align: right;
 }
 
-.doc-title h1 {
+.doc-company-name {
   font-size: 22px;
+  font-weight: 800;
+  color: var(--doc-red);
+  letter-spacing: 0.02em;
 }
 
-.doc-title p {
-  font-size: 13px;
-  color: var(--text);
+.doc-company-meta {
+  font-size: 11px;
+  color: #333;
+}
+
+.doc-page-divider {
+  height: 2px;
+  background: var(--doc-red);
+  margin: 12px 0 20px;
+}
+
+.doc-page-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.doc-page-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 20px;
+  font-size: 11px;
+  color: #333;
+  margin-top: 16px;
+}
+
+.doc-footer-right {
+  text-align: right;
+}
+
+.doc-title-band {
+  display: inline-block;
+  align-self: flex-start;
+  background: var(--doc-yellow);
+  color: #1a1a1a;
+  font-weight: 700;
+  font-style: italic;
+  padding: 6px 12px;
+  font-size: 15px;
+}
+
+.doc-hero-wrap {
+  text-align: center;
+  margin: 8px 0;
+}
+
+.doc-hero {
+  max-width: 100%;
+  max-height: 420px;
+  border-radius: 6px;
+  box-shadow: var(--shadow-lg);
+}
+
+.doc-cover-caption {
+  text-align: center;
+  font-weight: 700;
+  font-style: italic;
+}
+
+.doc-cover-quote {
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: #444;
+}
+
+.doc-highlight {
+  display: inline-block;
+  background: var(--doc-yellow);
+  color: #1a1a1a;
+  font-weight: 700;
+  font-style: italic;
+  padding: 4px 10px;
+}
+
+.doc-greeting {
+  color: var(--doc-blue);
+  font-weight: 700;
+  font-size: 14.5px;
+}
+
+.doc-itinerary-label {
+  color: var(--doc-blue);
+  font-weight: 700;
+}
+
+.doc-assembly {
+  font-weight: 700;
+}
+
+.doc-day-heading {
+  color: var(--doc-red);
+  font-weight: 800;
+  font-size: 15.5px;
+  text-transform: uppercase;
+  margin: 4px 0;
+}
+
+.doc-section-heading {
+  color: var(--doc-red);
+  font-weight: 800;
+  font-size: 15.5px;
+  margin: 4px 0;
+}
+
+.doc-bullet-list,
+.doc-numbered-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding-left: 20px;
+  font-size: 13.5px;
+}
+
+.doc-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin: 6px 0;
+}
+
+.doc-photo {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  border-radius: 6px;
+  box-shadow: var(--shadow);
+}
+
+.doc-meal-plan {
+  align-self: flex-start;
   margin-top: 4px;
 }
 
-.doc-meta {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  margin-bottom: 32px;
+.doc-cost-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
 }
 
-.doc-meta-item {
-  background: var(--code-bg);
-  border-radius: 10px;
-  padding: 12px 14px;
+.doc-cost-table th,
+.doc-cost-table td {
+  border: 1px solid var(--doc-pink-dark);
+  padding: 8px 10px;
+  text-align: left;
 }
 
-.doc-meta-label {
-  font-size: 10.5px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text);
-}
-
-.doc-meta-value {
-  font-size: 14.5px;
-  font-weight: 600;
-  color: var(--text-h);
-  margin-top: 3px;
-}
-
-.doc-section-title {
-  font-size: 15px;
+.doc-cost-table th {
+  background: var(--doc-pink-dark);
   font-weight: 700;
-  color: var(--text-h);
-  margin: 0 0 14px;
+  color: #1a1a1a;
 }
 
-.day-item {
-  display: grid;
-  grid-template-columns: 84px 1fr;
-  gap: 16px;
-  padding-bottom: 20px;
+.doc-cost-table td {
+  background: var(--doc-pink);
 }
 
-.day-item:last-of-type {
-  padding-bottom: 0;
-}
-
-.day-item-label {
-  font-size: 12.5px;
-  font-weight: 700;
-  color: var(--accent);
-  background: var(--accent-bg);
+.doc-child-policy {
+  background: var(--doc-pink);
   border-radius: 8px;
-  height: fit-content;
-  padding: 5px 0;
-  text-align: center;
+  padding: 12px 14px;
+  font-size: 13px;
 }
 
-.day-item-text p {
-  font-size: 13.5px;
-  color: var(--text);
-  white-space: pre-line;
-}
+@media print {
+  .no-print {
+    display: none !important;
+  }
 
-.doc-divider {
-  height: 1px;
-  background: var(--border);
-  margin: 28px 0;
-}
+  .app-main {
+    padding: 0 !important;
+  }
 
-.doc-signoff {
-  margin-top: 32px;
-  font-size: 12.5px;
-  color: var(--text);
-  text-align: center;
+  .doc-shell {
+    background: #fff !important;
+    padding: 0 !important;
+    gap: 0 !important;
+  }
+
+  .doc-page {
+    box-shadow: none !important;
+    border: none !important;
+    max-width: none;
+    width: 100%;
+    page-break-after: always;
+  }
+
+  .doc-page:last-child {
+    page-break-after: auto;
+  }
 }
 
 @media (max-width: 900px) {
@@ -840,11 +979,12 @@
     grid-template-columns: 1fr;
   }
 
-  .doc {
-    padding: 32px 24px;
+  .doc-page {
+    padding: 24px 20px;
+    min-height: 0;
   }
 
-  .doc-meta {
+  .doc-photo-grid {
     grid-template-columns: 1fr;
   }
 }

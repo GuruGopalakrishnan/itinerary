@@ -1,13 +1,14 @@
-import { DashboardIcon, SuitcaseIcon } from './icons'
+import { DashboardIcon, SuitcaseIcon, SettingsIcon } from './icons'
 
 const NAV_ITEMS = [
   { id: 'itineraries', label: 'Itineraries', Icon: DashboardIcon },
   { id: 'templates', label: 'Templates', Icon: SuitcaseIcon },
+  { id: 'settings', label: 'Settings', Icon: SettingsIcon },
 ]
 
 export default function Sidebar({ activeTab, onTabChange }) {
   return (
-    <aside className="sidebar">
+    <aside className="sidebar no-print">
       <div className="sidebar-brand">
         <span className="brand-wordmark">Itinerary Studio</span>
         <span className="brand-tagline">Trip Planner</span>

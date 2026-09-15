@@ -6,7 +6,44 @@ const router = Router()
 const STATUSES = ['draft', 'sent', 'confirmed']
 
 function serialize(row) {
-  return { ...row, days: JSON.parse(row.days) }
+  return { ...row, days: JSON.parse(row.days), cost_rows: JSON.parse(row.cost_rows || '[]') }
+}
+
+function fieldsFromBody(body) {
+  const {
+    client_name,
+    destination,
+    subtitle,
+    duration,
+    package_title,
+    tagline,
+    departure_dates,
+    assembly_point,
+    days,
+    inclusions,
+    exclusions,
+    cost_rows,
+    child_policy,
+    visa_info,
+    status,
+  } = body
+  return {
+    client_name,
+    destination,
+    subtitle,
+    duration,
+    package_title,
+    tagline,
+    departure_dates,
+    assembly_point,
+    days,
+    inclusions,
+    exclusions,
+    cost_rows,
+    child_policy,
+    visa_info,
+    status,
+  }
 }
 
 router.get('/', async (req, res) => {
@@ -21,19 +58,31 @@ router.get('/:id', async (req, res) => {
 })
 
 router.post('/', async (req, res) => {
-  const { client_name, destination, subtitle, duration, days, status } = req.body
-  if (!client_name || !client_name.trim()) return res.status(400).json({ error: 'Client name is required.' })
-  if (!destination || !destination.trim()) return res.status(400).json({ error: 'Destination is required.' })
+  const f = fieldsFromBody(req.body)
+  if (!f.client_name || !f.client_name.trim()) return res.status(400).json({ error: 'Client name is required.' })
+  if (!f.destination || !f.destination.trim()) return res.status(400).json({ error: 'Destination is required.' })
   const now = new Date().toISOString()
   const info = await db.execute({
-    sql: 'INSERT INTO itineraries (client_name, destination, subtitle, duration, days, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    sql: `INSERT INTO itineraries
+      (client_name, destination, subtitle, duration, package_title, tagline, departure_dates, assembly_point,
+       days, inclusions, exclusions, cost_rows, child_policy, visa_info, status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
-      client_name.trim(),
-      destination.trim(),
-      subtitle || '',
-      duration || '',
-      JSON.stringify(days || []),
-      STATUSES.includes(status) ? status : 'draft',
+      f.client_name.trim(),
+      f.destination.trim(),
+      f.subtitle || '',
+      f.duration || '',
+      f.package_title || '',
+      f.tagline || '',
+      f.departure_dates || '',
+      f.assembly_point || '',
+      JSON.stringify(f.days || []),
+      f.inclusions || '',
+      f.exclusions || '',
+      JSON.stringify(f.cost_rows || []),
+      f.child_policy || '',
+      f.visa_info || '',
+      STATUSES.includes(f.status) ? f.status : 'draft',
       now,
       now,
     ],
@@ -43,17 +92,30 @@ router.post('/', async (req, res) => {
 })
 
 router.put('/:id', async (req, res) => {
-  const { client_name, destination, subtitle, duration, days, status } = req.body
-  if (!client_name || !client_name.trim()) return res.status(400).json({ error: 'Client name is required.' })
+  const f = fieldsFromBody(req.body)
+  if (!f.client_name || !f.client_name.trim()) return res.status(400).json({ error: 'Client name is required.' })
   await db.execute({
-    sql: 'UPDATE itineraries SET client_name = ?, destination = ?, subtitle = ?, duration = ?, days = ?, status = ?, updated_at = ? WHERE id = ?',
+    sql: `UPDATE itineraries SET
+      client_name = ?, destination = ?, subtitle = ?, duration = ?, package_title = ?, tagline = ?,
+      departure_dates = ?, assembly_point = ?, days = ?, inclusions = ?, exclusions = ?, cost_rows = ?,
+      child_policy = ?, visa_info = ?, status = ?, updated_at = ?
+      WHERE id = ?`,
     args: [
-      client_name.trim(),
-      destination.trim(),
-      subtitle || '',
-      duration || '',
-      JSON.stringify(days || []),
-      STATUSES.includes(status) ? status : 'draft',
+      f.client_name.trim(),
+      f.destination.trim(),
+      f.subtitle || '',
+      f.duration || '',
+      f.package_title || '',
+      f.tagline || '',
+      f.departure_dates || '',
+      f.assembly_point || '',
+      JSON.stringify(f.days || []),
+      f.inclusions || '',
+      f.exclusions || '',
+      JSON.stringify(f.cost_rows || []),
+      f.child_policy || '',
+      f.visa_info || '',
+      STATUSES.includes(f.status) ? f.status : 'draft',
       new Date().toISOString(),
       req.params.id,
     ],

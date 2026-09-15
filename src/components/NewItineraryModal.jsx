@@ -4,6 +4,7 @@ export default function NewItineraryModal({ templates, onClose, onCreate }) {
   const [templateId, setTemplateId] = useState(templates[0]?.id ?? null)
   const [duration, setDuration] = useState(templates[0]?.default_duration ?? '')
   const [clientName, setClientName] = useState('')
+  const [departureDates, setDepartureDates] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -25,7 +26,16 @@ export default function NewItineraryModal({ templates, onClose, onCreate }) {
         destination: selected.destination,
         subtitle: selected.subtitle,
         duration,
+        package_title: selected.package_title,
+        tagline: selected.tagline,
+        departure_dates: departureDates,
+        assembly_point: selected.assembly_point || '',
         days: selected.days,
+        inclusions: selected.inclusions,
+        exclusions: selected.exclusions,
+        cost_rows: selected.cost_rows,
+        child_policy: selected.child_policy,
+        visa_info: selected.visa_info,
         status: 'draft',
       })
     } finally {
@@ -69,6 +79,15 @@ export default function NewItineraryModal({ templates, onClose, onCreate }) {
                   Duration
                   <input type="text" value={duration} onChange={(e) => setDuration(e.target.value)} />
                   <span className="auto-hint">Auto-filled from template — edit if the trip is shorter or longer</span>
+                </label>
+                <label className="field-label">
+                  Departure Date(s)
+                  <input
+                    type="text"
+                    placeholder="e.g. 13th Nov"
+                    value={departureDates}
+                    onChange={(e) => setDepartureDates(e.target.value)}
+                  />
                 </label>
               </div>
 
