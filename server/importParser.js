@@ -92,7 +92,7 @@ export async function parseItineraryDocx(buffer) {
     const dayMatch = /^day\s*0?(\d+)\b[:\-–]?\s*(.*)$/i.exec(text)
     if (dayMatch) {
       pushDay()
-      currentDay = { title: `Day ${dayMatch[1]}`, heading: dayMatch[2] || '', activities: '', meal_plan: '', photos: [] }
+      currentDay = { title: `Day ${dayMatch[1]}`, heading: dayMatch[2] || '', activities: '', highlight_place: '', meal_plan: '', photos: [] }
       state = 'days'
       return
     }
@@ -174,9 +174,9 @@ export async function parseItineraryDocx(buffer) {
 
   let destination = result.package_title
     .replace(/\(.*?\)\s*$/, '')
-    .replace(/^[A-Z0-9&\s]+'S\s+/i, '')
+    .replace(/^[A-Z0-9&\s]+['’]S\s+/i, '')
     .trim()
   result.destination = destination || result.package_title || 'Untitled Destination'
 
-  return result
+  return { parsed: result, rawHtml: html }
 }

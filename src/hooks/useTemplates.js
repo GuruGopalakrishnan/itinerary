@@ -42,5 +42,10 @@ export function useTemplates() {
     setTemplates((prev) => prev.filter((t) => t.id !== id))
   }
 
-  return { templates, loading, isDemo, addTemplate, updateTemplate, deleteTemplate, refetch }
+  async function fetchTemplateDetail(id) {
+    if (isDemo) return templates.find((t) => t.id === id) || null
+    return api.getTemplate(id)
+  }
+
+  return { templates, loading, isDemo, addTemplate, updateTemplate, deleteTemplate, fetchTemplateDetail, refetch }
 }

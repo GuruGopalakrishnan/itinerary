@@ -20,4 +20,10 @@ app.use('/api/itineraries', itinerariesRouter)
 app.use('/api/settings', settingsRouter)
 app.use('/api/import', importRouter)
 
+// Always return JSON for errors (including multer upload errors) instead of Express's default HTML page.
+app.use((err, req, res, next) => {
+  console.error(err)
+  res.status(err.status || 500).json({ error: err.message || 'Server error.' })
+})
+
 export default app

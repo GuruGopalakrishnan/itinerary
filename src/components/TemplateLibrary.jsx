@@ -1,420 +1,194 @@
-import { useEffect, useState } from 'react'
-import { api } from '../api/client'
+import { useMemo, useState } from 'react'
+import TemplateEditorFields from './TemplateEditorFields'
+import ImportWizardModal from './ImportWizardModal'
 
-function emptyDraft() {
-  return {
-    destination: '',
-    subtitle: '',
-    default_duration: '',
-    package_title: '',
-    tagline: '',
-    assembly_point: '',
-    days: [{ title: 'Day 1', heading: '', activities: '', meal_plan: '', photos: [] }],
-    inclusions: '',
-    exclusions: '',
-    cost_rows: [],
-    child_policy: '',
-    visa_info: '',
-  }
+function formatDateTime(iso) {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  return `${d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} · ${d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`
 }
 
-function fileToDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result)
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
+function base64ToBlob(base64, type) {
+  const binary = atob(base64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+  return new Blob([bytes], { type })
 }
 
-export default function TemplateLibrary({ templates, onAdd, onUpdate, onDelete }) {
-  const [selectedId, setSelectedId] = useState(templates[0]?.id ?? null)
-  const [draft, setDraft] = useState(null)
-  const [isNew, setIsNew] = useState(false)
-  const [sourceFilename, setSourceFilename] = useState(null)
+export default function TemplateLibrary({ templates, onAdd, onUpdate, onDelete, fetchTemplateDetail }) {
+  const [countryFilter, setCountryFilter] = useState(null)
+  const [showImportWizard, setShowImportWizard] = useState(false)
+  const [openId, setOpenId] = useState(null)
+  const [detail, setDetail] = useState(null)
+  const [viewMode, setViewMode] = useState('edit')
+  const [loadingDetail, setLoadingDetail] = useState(false)
 
-  const [importOpen, setImportOpen] = useState(false)
-  const [parsing, setParsing] = useState(false)
-  const [importResults, setImportResults] = useState([])
-  const [importedFiles, setImportedFiles] = useState(new Set())
-  const [importError, setImportError] = useState('')
-
-  useEffect(() => {
-    if (isNew) return
-    if (selectedId == null && templates.length > 0) {
-      setSelectedId(templates[0].id)
-      return
+  const byCountry = useMemo(() => {
+    const groups = {}
+    for (const t of templates) {
+      const key = t.country?.trim() || 'Uncategorized'
+      if (!groups[key]) groups[key] = []
+      groups[key].push(t)
     }
-    const selected = templates.find((t) => t.id === selectedId)
-    if (selected) {
-      setDraft({
-        ...selected,
-        days: selected.days.map((d) => ({ ...d, photos: [...(d.photos || [])] })),
-        cost_rows: (selected.cost_rows || []).map((r) => ({ ...r })),
-      })
-    }
-  }, [selectedId, templates, isNew])
+    return groups
+  }, [templates])
 
-  function selectTemplate(t) {
-    setIsNew(false)
-    setSelectedId(t.id)
-    setSourceFilename(null)
-  }
+  const countryNames = Object.keys(byCountry).sort()
 
-  function startNew() {
-    setIsNew(true)
-    setSelectedId(null)
-    setSourceFilename(null)
-    setDraft(emptyDraft())
-  }
-
-  async function handleParseFiles(fileList) {
-    const files = Array.from(fileList || [])
-    if (files.length === 0) return
-    setParsing(true)
-    setImportError('')
+  async function openTemplate(t) {
+    setOpenId(t.id)
+    setViewMode('edit')
+    setLoadingDetail(true)
     try {
-      const { results } = await api.parseDocxFiles(files)
-      setImportResults(results)
-    } catch {
-      setImportError('Could not reach the import service — this needs the backend running (npm run dev locally), not just the static preview.')
+      const full = await fetchTemplateDetail(t.id)
+      setDetail(full)
     } finally {
-      setParsing(false)
+      setLoadingDetail(false)
     }
   }
 
-  function reviewImportResult(item) {
-    setIsNew(true)
-    setSelectedId(null)
-    setSourceFilename(item.filename)
-    setDraft({ ...emptyDraft(), ...item.parsed })
-    setImportOpen(false)
+  function closeTemplate() {
+    setOpenId(null)
+    setDetail(null)
   }
 
-  function updateDay(index, field, value) {
-    setDraft((prev) => ({ ...prev, days: prev.days.map((d, i) => (i === index ? { ...d, [field]: value } : d)) }))
+  async function saveDetail() {
+    await onUpdate(detail.id, detail)
+    closeTemplate()
   }
 
-  function addDay() {
-    setDraft((prev) => ({
-      ...prev,
-      days: [...prev.days, { title: `Day ${prev.days.length + 1}`, heading: '', activities: '', meal_plan: '', photos: [] }],
-    }))
+  async function removeDetail() {
+    if (!confirm(`Delete "${detail.destination}" template?`)) return
+    await onDelete(detail.id)
+    closeTemplate()
   }
 
-  function removeDay(index) {
-    setDraft((prev) => ({ ...prev, days: prev.days.filter((_, i) => i !== index) }))
+  function downloadOriginal() {
+    if (!detail?.raw_docx_base64) return
+    const blob = base64ToBlob(
+      detail.raw_docx_base64,
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    )
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = detail.raw_filename || `${detail.destination}.docx`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
-  async function addDayPhotos(index, fileList) {
-    const files = Array.from(fileList || [])
-    if (files.length === 0) return
-    const dataUrls = await Promise.all(files.map(fileToDataUrl))
-    setDraft((prev) => ({
-      ...prev,
-      days: prev.days.map((d, i) => (i === index ? { ...d, photos: [...(d.photos || []), ...dataUrls] } : d)),
-    }))
-  }
-
-  function removeDayPhoto(dayIndex, photoIndex) {
-    setDraft((prev) => ({
-      ...prev,
-      days: prev.days.map((d, i) => (i === dayIndex ? { ...d, photos: d.photos.filter((_, pi) => pi !== photoIndex) } : d)),
-    }))
-  }
-
-  function updateCostRow(index, field, value) {
-    setDraft((prev) => ({ ...prev, cost_rows: prev.cost_rows.map((r, i) => (i === index ? { ...r, [field]: value } : r)) }))
-  }
-
-  function addCostRow() {
-    setDraft((prev) => ({ ...prev, cost_rows: [...prev.cost_rows, { component: '', cost: '', remarks: '' }] }))
-  }
-
-  function removeCostRow(index) {
-    setDraft((prev) => ({ ...prev, cost_rows: prev.cost_rows.filter((_, i) => i !== index) }))
-  }
-
-  async function save() {
-    if (!draft.destination.trim()) return
-    if (isNew) {
-      const created = await onAdd(draft)
-      setIsNew(false)
-      setSelectedId(created.id)
-      if (sourceFilename) {
-        setImportedFiles((prev) => new Set(prev).add(sourceFilename))
-        setSourceFilename(null)
-      }
-    } else {
-      await onUpdate(draft.id, draft)
-    }
-  }
-
-  async function remove() {
-    if (!draft?.id) return
-    if (!confirm(`Delete "${draft.destination}" template?`)) return
-    await onDelete(draft.id)
-    setSelectedId(null)
-    setDraft(null)
+  async function handleImportSave(draft) {
+    const created = await onAdd(draft)
+    setCountryFilter(created.country || 'Uncategorized')
   }
 
   return (
     <div className="dashboard">
       <div className="hint-note" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
         <span>
-          This is your library — paste a short day-by-day itinerary once per destination (add photos too). Every
-          new itinerary you generate reuses this as the starting content.
+          Templates are organized by country. Click a country to see the itineraries you've uploaded for it.
         </span>
-        <button type="button" className="btn-secondary" style={{ flexShrink: 0 }} onClick={() => setImportOpen(true)}>
+        <button type="button" className="btn-primary" style={{ flexShrink: 0 }} onClick={() => setShowImportWizard(true)}>
           Import from Word
         </button>
       </div>
 
-      {importOpen && (
-        <div className="modal-overlay" onClick={() => setImportOpen(false)}>
-          <div className="modal import-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Import Destination Templates from Word</h2>
-              <button type="button" className="modal-close" onClick={() => setImportOpen(false)}>
-                &times;
+      {showImportWizard && <ImportWizardModal onClose={() => setShowImportWizard(false)} onSave={handleImportSave} />}
+
+      {openId && detail && (
+        <div className="tpl-editor">
+          <div className="tpl-editor-head">
+            <div>
+              <button type="button" className="topbar-back" onClick={closeTemplate}>
+                &larr; Back to {detail.country || 'Uncategorized'}
+              </button>
+              <h2 style={{ marginTop: 4 }}>{detail.destination}</h2>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" className="btn-secondary" onClick={removeDetail}>
+                Delete
+              </button>
+              <button type="button" className="btn-primary" onClick={saveDetail}>
+                Save Changes
               </button>
             </div>
-            <div className="itin-form">
-              <p className="muted" style={{ fontSize: 13 }}>
-                Select as many .docx itinerary files as you like. Each one is scanned for its day-by-day structure,
-                inclusions/exclusions, and cost table — you review and save each one before it's added to your
-                library. Booking Terms / Cancellation Policy / Important Notes are skipped here since those come
-                from Settings.
-              </p>
-              <input type="file" accept=".docx" multiple onChange={(e) => handleParseFiles(e.target.files)} />
-              {parsing && <p className="muted">Parsing…</p>}
-              {importError && <p className="form-error">{importError}</p>}
+          </div>
 
-              {importResults.length > 0 && (
-                <div className="import-results-list">
-                  {importResults.map((item) => (
-                    <div className="import-result-row" key={item.filename}>
-                      <div className="import-result-info">
-                        <span className="import-result-name">{item.filename}</span>
-                        {item.ok ? (
-                          <span className="muted" style={{ fontSize: 12 }}>
-                            {item.parsed.destination || 'Untitled'} · {item.parsed.days?.length || 0} day
-                            {item.parsed.days?.length === 1 ? '' : 's'}
-                          </span>
-                        ) : (
-                          <span className="form-error" style={{ fontSize: 12 }}>
-                            Could not parse: {item.error}
-                          </span>
-                        )}
-                      </div>
-                      {item.ok &&
-                        (importedFiles.has(item.filename) ? (
-                          <span className="status-badge status-confirmed">Imported</span>
-                        ) : (
-                          <button type="button" className="btn-secondary" onClick={() => reviewImportResult(item)}>
-                            Review &amp; Save
-                          </button>
-                        ))}
-                    </div>
-                  ))}
-                </div>
+          <div className="meta-row">
+            <span>
+              <strong>Created:</strong> {formatDateTime(detail.created_at)}
+            </span>
+            <span>
+              <strong>Uploaded:</strong> {formatDateTime(detail.uploaded_at)}
+            </span>
+          </div>
+
+          <div className="view-toggle" style={{ alignSelf: 'flex-start' }}>
+            <button type="button" className={`view-toggle-btn${viewMode === 'edit' ? ' active' : ''}`} onClick={() => setViewMode('edit')}>
+              Processed / Editable
+            </button>
+            <button type="button" className={`view-toggle-btn${viewMode === 'raw' ? ' active' : ''}`} onClick={() => setViewMode('raw')}>
+              Raw Original
+            </button>
+          </div>
+
+          {viewMode === 'edit' ? (
+            <TemplateEditorFields draft={detail} setDraft={setDetail} />
+          ) : (
+            <div className="raw-view">
+              {detail.raw_docx_base64 ? (
+                <button type="button" className="btn-secondary" style={{ alignSelf: 'flex-start' }} onClick={downloadOriginal}>
+                  Download Original .docx
+                </button>
+              ) : (
+                <p className="muted">No original file stored for this template (it wasn't created via Import from Word).</p>
+              )}
+              {detail.raw_html ? (
+                <div className="raw-html-box" dangerouslySetInnerHTML={{ __html: detail.raw_html }} />
+              ) : (
+                <p className="muted">No raw preview available.</p>
               )}
             </div>
+          )}
+        </div>
+      )}
+
+      {openId && loadingDetail && <p className="muted">Loading…</p>}
+
+      {!openId && countryFilter === null && (
+        <div className="tpl-layout" style={{ gridTemplateColumns: '1fr' }}>
+          <div className="country-grid">
+            {countryNames.length === 0 && <p className="muted">No templates yet — click "Import from Word" to add your first one.</p>}
+            {countryNames.map((name) => (
+              <button type="button" key={name} className="country-folder" onClick={() => setCountryFilter(name)}>
+                <span className="country-folder-name">{name}</span>
+                <span className="country-folder-count">
+                  {byCountry[name].length} itinerar{byCountry[name].length === 1 ? 'y' : 'ies'}
+                </span>
+              </button>
+            ))}
           </div>
         </div>
       )}
 
-      <div className="tpl-layout">
-        <div className="tpl-list">
-          {templates.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              className={`tpl-card${!isNew && selectedId === t.id ? ' active' : ''}`}
-              onClick={() => selectTemplate(t)}
-            >
-              <span className="tpl-card-name">{t.destination}</span>
-              <span className="tpl-card-meta">
-                {t.subtitle}
-                {t.subtitle ? ' · ' : ''}
-                {t.default_duration}
-              </span>
-            </button>
-          ))}
-          <button type="button" className="tpl-add" onClick={startNew}>
-            + Add Destination Template
+      {!openId && countryFilter !== null && (
+        <div className="tpl-layout" style={{ gridTemplateColumns: '1fr' }}>
+          <button type="button" className="topbar-back" style={{ alignSelf: 'flex-start' }} onClick={() => setCountryFilter(null)}>
+            &larr; All Countries
           </button>
-        </div>
-
-        {draft && (
-          <div className="tpl-editor">
-            <div className="tpl-editor-head">
-              <h2>{isNew ? 'New Destination Template' : draft.destination || 'Untitled'}</h2>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {!isNew && (
-                  <button type="button" className="btn-secondary" onClick={remove}>
-                    Delete
-                  </button>
-                )}
-                <button type="button" className="btn-primary" onClick={save}>
-                  {isNew ? 'Create Template' : 'Save Changes'}
-                </button>
-              </div>
-            </div>
-
-            <div className="form-row">
-              <label className="field-label">
-                Destination Name
-                <input type="text" value={draft.destination} onChange={(e) => setDraft({ ...draft, destination: e.target.value })} />
-              </label>
-              <label className="field-label" style={{ maxWidth: 200 }}>
-                Default Duration
-                <input
-                  type="text"
-                  placeholder="e.g. 5 Days / 4 Nights"
-                  value={draft.default_duration}
-                  onChange={(e) => setDraft({ ...draft, default_duration: e.target.value })}
-                />
-              </label>
-            </div>
-            <label className="field-label">
-              Route / Sub-title
-              <input
-                type="text"
-                placeholder="e.g. Munnar - Alleppey - Kumarakom"
-                value={draft.subtitle}
-                onChange={(e) => setDraft({ ...draft, subtitle: e.target.value })}
-              />
-            </label>
-            <label className="field-label">
-              Package Title <span className="muted">(shown on the document header)</span>
-              <input
-                type="text"
-                placeholder="e.g. ABCD'S BANGKOK &amp; PATTAYA (4 NIGHT &amp; 5 DAYS)"
-                value={draft.package_title}
-                onChange={(e) => setDraft({ ...draft, package_title: e.target.value })}
-              />
-            </label>
-            <label className="field-label">
-              Tagline <span className="muted">(optional quote under the title)</span>
-              <input type="text" value={draft.tagline} onChange={(e) => setDraft({ ...draft, tagline: e.target.value })} />
-            </label>
-            <label className="field-label">
-              Assembly Point <span className="muted">(e.g. Assemble at Chennai International Airport at 0800pm)</span>
-              <input
-                type="text"
-                value={draft.assembly_point}
-                onChange={(e) => setDraft({ ...draft, assembly_point: e.target.value })}
-              />
-            </label>
-
-            {draft.days.map((day, i) => (
-              <div className="day-block" key={i}>
-                <div className="day-block-head">
-                  <span className="day-title">{day.title?.toUpperCase()}</span>
-                  {draft.days.length > 1 && (
-                    <button type="button" className="icon-btn-sm" onClick={() => removeDay(i)} title="Remove day">
-                      ×
-                    </button>
-                  )}
-                </div>
-                <input
-                  type="text"
-                  placeholder="Day heading, e.g. ARRIVAL IN BANGKOK - TO PATTAYA"
-                  value={day.heading}
-                  onChange={(e) => updateDay(i, 'heading', e.target.value)}
-                />
-                <textarea
-                  rows={4}
-                  placeholder={'One activity per line, e.g.\nArrive Kochi, drive to Munnar\nCheck-in resort, evening tea garden walk'}
-                  value={day.activities}
-                  onChange={(e) => updateDay(i, 'activities', e.target.value)}
-                />
-                <div className="form-row">
-                  <input
-                    type="text"
-                    placeholder="Meal plan, e.g. Breakfast, Lunch, Dinner"
-                    value={day.meal_plan}
-                    onChange={(e) => updateDay(i, 'meal_plan', e.target.value)}
-                  />
-                </div>
-                <input type="file" accept="image/*" multiple onChange={(e) => addDayPhotos(i, e.target.files)} />
-                {day.photos?.length > 0 && (
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    {day.photos.map((photo, pi) => (
-                      <div key={pi} style={{ position: 'relative' }}>
-                        <img src={photo} alt="" style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 8 }} />
-                        <button
-                          type="button"
-                          className="icon-btn-sm"
-                          style={{ position: 'absolute', top: -6, right: -6, width: 18, height: 18, fontSize: 10 }}
-                          onClick={() => removeDayPhoto(i, pi)}
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-            <button type="button" className="btn-secondary" style={{ alignSelf: 'flex-start' }} onClick={addDay}>
-              + Add Day
-            </button>
-
-            <label className="field-label">
-              Inclusions <span className="muted">(one line each)</span>
-              <textarea rows={4} value={draft.inclusions} onChange={(e) => setDraft({ ...draft, inclusions: e.target.value })} />
-            </label>
-            <label className="field-label">
-              Exclusions <span className="muted">(one line each)</span>
-              <textarea rows={4} value={draft.exclusions} onChange={(e) => setDraft({ ...draft, exclusions: e.target.value })} />
-            </label>
-
-            <div className="field-label">
-              Cost Table
-              {draft.cost_rows.map((row, i) => (
-                <div className="form-row" key={i} style={{ alignItems: 'center' }}>
-                  <input
-                    type="text"
-                    placeholder="Component (e.g. Land Package Cost)"
-                    value={row.component}
-                    onChange={(e) => updateCostRow(i, 'component', e.target.value)}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Cost (e.g. ₹ 29,000)"
-                    style={{ maxWidth: 130 }}
-                    value={row.cost}
-                    onChange={(e) => updateCostRow(i, 'cost', e.target.value)}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Remarks"
-                    value={row.remarks}
-                    onChange={(e) => updateCostRow(i, 'remarks', e.target.value)}
-                  />
-                  <button type="button" className="icon-btn-sm" onClick={() => removeCostRow(i)}>
-                    ×
-                  </button>
-                </div>
-              ))}
-              <button type="button" className="btn-secondary" style={{ alignSelf: 'flex-start', marginTop: 6 }} onClick={addCostRow}>
-                + Add Cost Row
+          <h2 style={{ margin: '4px 0 0' }}>{countryFilter}</h2>
+          <div className="tpl-list" style={{ flexDirection: 'column' }}>
+            {(byCountry[countryFilter] || []).map((t) => (
+              <button type="button" key={t.id} className="tpl-card" onClick={() => openTemplate(t)}>
+                <span className="tpl-card-name">{t.destination}</span>
+                <span className="tpl-card-meta">
+                  {t.default_duration} · Created {formatDateTime(t.created_at)}
+                </span>
               </button>
-            </div>
-
-            <label className="field-label">
-              Child Policy
-              <textarea rows={3} value={draft.child_policy} onChange={(e) => setDraft({ ...draft, child_policy: e.target.value })} />
-            </label>
-            <label className="field-label">
-              Visa Info
-              <input type="text" value={draft.visa_info} onChange={(e) => setDraft({ ...draft, visa_info: e.target.value })} />
-            </label>
+            ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }

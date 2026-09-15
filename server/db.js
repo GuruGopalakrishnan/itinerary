@@ -229,6 +229,13 @@ async function init() {
   await addColumn('templates', 'child_policy TEXT')
   await addColumn('templates', 'visa_info TEXT')
 
+  // Templates: country-wise organization + raw uploaded file (for the "view original" flow).
+  await addColumn('templates', 'country TEXT')
+  await addColumn('templates', 'uploaded_at TEXT')
+  await addColumn('templates', 'raw_html TEXT')
+  await addColumn('templates', 'raw_docx_base64 TEXT')
+  await addColumn('templates', 'raw_filename TEXT')
+
   // Itineraries: same extension, plus per-trip departure date and assembly point.
   await addColumn('itineraries', 'package_title TEXT')
   await addColumn('itineraries', 'tagline TEXT')
@@ -264,8 +271,8 @@ async function init() {
   if (templateCount === 0) {
     await db.execute({
       sql: `INSERT INTO templates
-        (destination, subtitle, default_duration, package_title, tagline, days, inclusions, exclusions, cost_rows, child_policy, visa_info, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (destination, subtitle, default_duration, package_title, tagline, days, inclusions, exclusions, cost_rows, child_policy, visa_info, country, uploaded_at, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         'Bangkok & Pattaya',
         'Thailand Group Tour',
@@ -278,6 +285,8 @@ async function init() {
         JSON.stringify(THAILAND_COST_ROWS),
         'Infants (0-2 yrs): free of cost in land & flight ticket as per policy\nChildren 3-7 yrs: 75% of adult rate\nChildren 7-11 yrs: 85% of adult rate\nFrom 11 yrs: charged as adult',
         'Arrival visa / arrival card - apply before 02 days of departure',
+        'Thailand',
+        new Date().toISOString(),
         new Date().toISOString(),
       ],
     })

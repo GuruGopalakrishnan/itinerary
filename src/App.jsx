@@ -16,7 +16,14 @@ function App() {
   const [showNewModal, setShowNewModal] = useState(false)
   const [openItineraryId, setOpenItineraryId] = useState(null)
 
-  const { templates, isDemo: templatesDemo, addTemplate, updateTemplate, deleteTemplate } = useTemplates()
+  const {
+    templates,
+    isDemo: templatesDemo,
+    addTemplate,
+    updateTemplate,
+    deleteTemplate,
+    fetchTemplateDetail,
+  } = useTemplates()
   const {
     itineraries,
     loading,
@@ -102,6 +109,7 @@ function App() {
               onAdd={addTemplate}
               onUpdate={updateTemplate}
               onDelete={deleteTemplate}
+              fetchTemplateDetail={fetchTemplateDetail}
             />
           )}
 

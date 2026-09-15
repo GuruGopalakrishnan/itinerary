@@ -447,6 +447,99 @@
   font: inherit;
 }
 
+.country-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.country-chip {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+.country-chip:hover {
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+
+.country-folder {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.country-folder:hover {
+  border-color: var(--accent-border);
+  box-shadow: var(--shadow);
+}
+
+.country-folder-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+.country-folder-count {
+  font-size: 12.5px;
+  color: var(--text);
+}
+
+.meta-row {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--code-bg);
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+
+.raw-view {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.raw-html-box {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px 32px;
+  background: #fff;
+  color: #1a1a1a;
+  max-height: 600px;
+  overflow-y: auto;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+.raw-html-box table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.raw-html-box td,
+.raw-html-box th {
+  border: 1px solid #ccc;
+  padding: 6px 8px;
+}
+
 .tpl-editor {
   border: 1px solid var(--border);
   background: var(--surface);
@@ -727,6 +820,7 @@
   padding: 40px 48px;
   display: flex;
   flex-direction: column;
+  font-family: Cambria, Georgia, 'Times New Roman', serif;
   font-size: 13.5px;
   line-height: 1.5;
 }
@@ -843,6 +937,13 @@
   font-weight: 700;
   font-style: italic;
   padding: 4px 10px;
+}
+
+.doc-place-highlight {
+  background: var(--doc-yellow);
+  color: #1a1a1a;
+  font-weight: 700;
+  padding: 0 1px;
 }
 
 .doc-greeting {

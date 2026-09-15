@@ -22,6 +22,7 @@ const RED = 'A41E28'
 const BLUE = '1E4D8F'
 const PINK = 'F6D6D6'
 const PINK_DARK = 'E8B7B7'
+const FONT = 'Cambria'
 
 const NO_BORDERS = {
   top: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
@@ -76,6 +77,31 @@ function bulletParagraph(text) {
 
 function numberedParagraph(text, reference) {
   return new Paragraph({ text, numbering: { reference, level: 0 }, spacing: { after: 60 } })
+}
+
+// Splits `text` into runs, bolding + yellow-highlighting every occurrence of `highlightPlace`
+// (case-insensitive) — matches how the real sample itineraries bold the main attraction inline.
+function highlightRuns(text, highlightPlace) {
+  const needle = (highlightPlace || '').trim()
+  if (!needle) return [new TextRun(text)]
+  const lower = text.toLowerCase()
+  const needleLower = needle.toLowerCase()
+  const runs = []
+  let cursor = 0
+  let idx = lower.indexOf(needleLower, cursor)
+  if (idx === -1) return [new TextRun(text)]
+  while (idx !== -1) {
+    if (idx > cursor) runs.push(new TextRun(text.slice(cursor, idx)))
+    runs.push(new TextRun({ text: text.slice(idx, idx + needle.length), bold: true, highlight: 'yellow' }))
+    cursor = idx + needle.length
+    idx = lower.indexOf(needleLower, cursor)
+  }
+  if (cursor < text.length) runs.push(new TextRun(text.slice(cursor)))
+  return runs
+}
+
+function dayBulletParagraph(text, highlightPlace) {
+  return new Paragraph({ bullet: { level: 0 }, spacing: { after: 60 }, children: highlightRuns(text, highlightPlace) })
 }
 
 async function buildHeader(settings) {
@@ -249,7 +275,7 @@ async function buildBody(itinerary, settings) {
     )
 
     for (const line of lines(day.activities)) {
-      body.push(bulletParagraph(line))
+      body.push(dayBulletParagraph(line, day.highlight_place))
     }
 
     if (day.photos?.length > 0) {
@@ -364,6 +390,11 @@ export async function buildItineraryDocx(itinerary, settings) {
   const body = await buildBody(itinerary, settings)
 
   const doc = new Document({
+    styles: {
+      default: {
+        document: { run: { font: FONT } },
+      },
+    },
     numbering: {
       config: [
         {

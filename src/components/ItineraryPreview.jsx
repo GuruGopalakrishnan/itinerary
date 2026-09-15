@@ -5,6 +5,30 @@ function lines(text) {
   return (text || '').split('\n').map((l) => l.trim()).filter(Boolean)
 }
 
+function renderHighlighted(text, highlightPlace) {
+  const needle = (highlightPlace || '').trim()
+  if (!needle) return text
+  const lower = text.toLowerCase()
+  const needleLower = needle.toLowerCase()
+  const parts = []
+  let cursor = 0
+  let idx = lower.indexOf(needleLower, cursor)
+  if (idx === -1) return text
+  let key = 0
+  while (idx !== -1) {
+    if (idx > cursor) parts.push(text.slice(cursor, idx))
+    parts.push(
+      <mark className="doc-place-highlight" key={key++}>
+        {text.slice(idx, idx + needle.length)}
+      </mark>,
+    )
+    cursor = idx + needle.length
+    idx = lower.indexOf(needleLower, cursor)
+  }
+  if (cursor < text.length) parts.push(text.slice(cursor))
+  return parts
+}
+
 function Letterhead({ settings }) {
   return (
     <>
@@ -153,7 +177,7 @@ export default function ItineraryPreview({ itinerary, settings, onStatusChange, 
 
             <ul className="doc-bullet-list">
               {lines(day.activities).map((line, li) => (
-                <li key={li}>{line}</li>
+                <li key={li}>{renderHighlighted(line, day.highlight_place)}</li>
               ))}
             </ul>
 
