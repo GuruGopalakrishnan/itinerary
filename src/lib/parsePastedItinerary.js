@@ -1,4 +1,12 @@
-const SKIP_HEADINGS = /^(booking terms|cancellation policy|important notes)/i
+const SKIP_KEYWORDS = ['booking terms', 'terms and condition', 'cancellation policy', 'important note']
+const INCLUDE_KEYWORDS = ['inclusion', 'includes', 'package includes']
+const EXCLUDE_KEYWORDS = ['exclusion', 'excludes', 'package excludes']
+
+function isHeadingLike(text, keywords) {
+  if (text.length > 70) return false
+  const lower = text.toLowerCase()
+  return keywords.some((kw) => lower.includes(kw))
+}
 
 function splitCostRow(line) {
   let parts = line.split('|').map((p) => p.trim())
@@ -7,9 +15,31 @@ function splitCostRow(line) {
   return parts.filter(Boolean)
 }
 
+// A day line often arrives as one dense run — "DAY 1 - Oct 8, 2026 : Pick Up from X
+// > Y > Z | Shared Transfer | G | D | EI" — split it into a date (if present) and
+// separate activity bullets on '>' and '|', instead of dumping the whole line into
+// one field.
+function splitDayContent(rest) {
+  let content = rest.replace(/^[-–—:]\s*/, '').trim()
+  let date = ''
+
+  const dateMatch = /^([A-Za-z]+\s+\d{1,2},?\s+\d{4})\s*:\s*(.*)$/.exec(content)
+  if (dateMatch) {
+    date = dateMatch[1]
+    content = dateMatch[2].trim()
+  }
+
+  const segments = content
+    .split(/\s*[>|]\s*/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+
+  return { date, segments }
+}
+
 // Parses raw text pasted from a DMC document into the same shape the Word-import
 // parser produces — plain-text version of server/importParser.js's state machine
-// (no AI, deterministic pattern matching on "Day N", "INCLUSIONS:", etc.).
+// (no AI, deterministic pattern matching on "Day N", "Includes:", etc.).
 export function parsePastedItinerary(rawText) {
   const result = {
     days: [],
@@ -38,25 +68,33 @@ export function parsePastedItinerary(rawText) {
   for (const text of rawLines) {
     if (!text) continue
 
-    if (SKIP_HEADINGS.test(text)) {
+    if (isHeadingLike(text, SKIP_KEYWORDS)) {
       state = 'skip'
       continue
     }
     if (state === 'skip') continue
 
-    const dayMatch = /^day\s*0?(\d+)\b[:\-–]?\s*(.*)$/i.exec(text)
+    const dayMatch = (state === 'preamble' || state === 'days') && /^day\s*0?(\d+)\b\s*(.*)$/i.exec(text)
     if (dayMatch) {
       pushDay()
-      currentDay = { title: `Day ${dayMatch[1]}`, heading: dayMatch[2] || '', activities: '', highlight_place: '', meal_plan: '', photos: [] }
+      const { date, segments } = splitDayContent(dayMatch[2] || '')
+      currentDay = {
+        title: `Day ${dayMatch[1]}`,
+        heading: date,
+        activities: segments.join('\n'),
+        highlight_place: '',
+        meal_plan: '',
+        photos: [],
+      }
       state = 'days'
       continue
     }
 
-    if (/^inclusions?\s*:?$/i.test(text)) {
+    if (isHeadingLike(text, INCLUDE_KEYWORDS)) {
       state = 'inclusions'
       continue
     }
-    if (/^exclusions?\s*:?$/i.test(text)) {
+    if (isHeadingLike(text, EXCLUDE_KEYWORDS)) {
       state = 'exclusions'
       continue
     }
@@ -68,21 +106,19 @@ export function parsePastedItinerary(rawText) {
       state = 'cost'
       continue
     }
-    if (/^visa\b/i.test(text) && text.length < 80) {
+    if (!['days', 'inclusions', 'exclusions'].includes(state) && /^visa\b/i.test(text) && text.length < 80) {
       result.visa_info = text.replace(/^visa[:\s-]*/i, '')
       continue
     }
-    if (/^assemble\b/i.test(text)) {
+    if (/^assemble\b|^pick\s*-?\s*up\b/i.test(text) && state === 'preamble') {
       result.assembly_point = text
       continue
     }
-    if (/^greetings from/i.test(text) || /^itinerary!*$/i.test(text)) {
+    if (/^greetings from/i.test(text) || /^itinerary!*$/i.test(text) || /^tentative itinerary/i.test(text)) {
       continue
     }
 
     if (state === 'preamble') {
-      // Freeform preamble text (e.g. a title line pasted along with the rest) is
-      // ignored — destination/duration/title come from the form fields, not the paste.
       continue
     }
 
@@ -92,7 +128,8 @@ export function parsePastedItinerary(rawText) {
         continue
       }
       const bullet = text.replace(/^[-•*]\s*/, '')
-      currentDay.activities = [currentDay.activities, bullet].filter(Boolean).join('\n')
+      const { segments } = splitDayContent(bullet)
+      currentDay.activities = [currentDay.activities, ...segments].filter(Boolean).join('\n')
       continue
     }
 

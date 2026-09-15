@@ -1,7 +1,36 @@
 import mammoth from 'mammoth'
 import { load } from 'cheerio'
 
-const SKIP_HEADINGS = /^(booking terms|cancellation policy|important notes)/i
+const SKIP_KEYWORDS = ['booking terms', 'terms and condition', 'cancellation policy', 'important note']
+const INCLUDE_KEYWORDS = ['inclusion', 'includes', 'package includes']
+const EXCLUDE_KEYWORDS = ['exclusion', 'excludes', 'package excludes']
+
+function isHeadingLike(text, keywords) {
+  if (text.length > 70) return false
+  const lower = text.toLowerCase()
+  return keywords.some((kw) => lower.includes(kw))
+}
+
+// A day line sometimes arrives as one dense run — "DAY 1 - Oct 8, 2026 : Pick Up from X
+// > Y > Z | Shared Transfer | G | D | EI" — split it into a date (if present) and
+// separate activity bullets on '>' and '|' instead of dumping the whole line into one field.
+function splitDayContent(rest) {
+  let content = rest.replace(/^[-–—:]\s*/, '').trim()
+  let date = ''
+
+  const dateMatch = /^([A-Za-z]+\s+\d{1,2},?\s+\d{4})\s*:\s*(.*)$/.exec(content)
+  if (dateMatch) {
+    date = dateMatch[1]
+    content = dateMatch[2].trim()
+  }
+
+  const segments = content
+    .split(/\s*[>|]\s*/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+
+  return { date, segments }
+}
 
 function textOf($el, $) {
   return $el.text().replace(/\s+/g, ' ').trim()
@@ -83,25 +112,33 @@ export async function parseItineraryDocx(buffer) {
     const text = textOf($el, $)
     if (!text) return
 
-    if (SKIP_HEADINGS.test(text)) {
+    if (isHeadingLike(text, SKIP_KEYWORDS)) {
       state = 'skip'
       return
     }
     if (state === 'skip') return
 
-    const dayMatch = /^day\s*0?(\d+)\b[:\-–]?\s*(.*)$/i.exec(text)
+    const dayMatch = (state === 'preamble' || state === 'days') && /^day\s*0?(\d+)\b\s*(.*)$/i.exec(text)
     if (dayMatch) {
       pushDay()
-      currentDay = { title: `Day ${dayMatch[1]}`, heading: dayMatch[2] || '', activities: '', highlight_place: '', meal_plan: '', photos: [] }
+      const { date, segments } = splitDayContent(dayMatch[2] || '')
+      currentDay = {
+        title: `Day ${dayMatch[1]}`,
+        heading: date,
+        activities: segments.join('\n'),
+        highlight_place: '',
+        meal_plan: '',
+        photos: [],
+      }
       state = 'days'
       return
     }
 
-    if (/^inclusions?\s*:?$/i.test(text)) {
+    if (isHeadingLike(text, INCLUDE_KEYWORDS)) {
       state = 'inclusions'
       return
     }
-    if (/^exclusions?\s*:?$/i.test(text)) {
+    if (isHeadingLike(text, EXCLUDE_KEYWORDS)) {
       state = 'exclusions'
       return
     }
@@ -109,7 +146,7 @@ export async function parseItineraryDocx(buffer) {
       state = 'childpolicy'
       return
     }
-    if (/^visa\b/i.test(text) && text.length < 80) {
+    if (!['days', 'inclusions', 'exclusions'].includes(state) && /^visa\b/i.test(text) && text.length < 80) {
       result.visa_info = text.replace(/^visa[:\s-]*/i, '')
       return
     }
@@ -139,7 +176,8 @@ export async function parseItineraryDocx(buffer) {
         const items = listItems($el, $)
         currentDay.activities = [currentDay.activities, ...items].filter(Boolean).join('\n')
       } else {
-        currentDay.activities = [currentDay.activities, text].filter(Boolean).join('\n')
+        const { segments } = splitDayContent(text)
+        currentDay.activities = [currentDay.activities, ...segments].filter(Boolean).join('\n')
       }
       return
     }
