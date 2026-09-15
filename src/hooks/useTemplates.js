@@ -1,14 +1,23 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
+import { SAMPLE_TEMPLATES } from '../data/sampleData'
 
 export function useTemplates() {
   const [templates, setTemplates] = useState([])
   const [loading, setLoading] = useState(true)
+  const [isDemo, setIsDemo] = useState(false)
 
   const refetch = useCallback(async () => {
     setLoading(true)
-    const data = await api.getTemplates()
-    setTemplates(data)
+    try {
+      const data = await api.getTemplates()
+      setTemplates(data)
+      setIsDemo(false)
+    } catch {
+      // No backend reachable (e.g. the static GitHub Pages preview) — show sample data instead.
+      setTemplates(SAMPLE_TEMPLATES)
+      setIsDemo(true)
+    }
     setLoading(false)
   }, [])
 
@@ -33,5 +42,5 @@ export function useTemplates() {
     setTemplates((prev) => prev.filter((t) => t.id !== id))
   }
 
-  return { templates, loading, addTemplate, updateTemplate, deleteTemplate, refetch }
+  return { templates, loading, isDemo, addTemplate, updateTemplate, deleteTemplate, refetch }
 }

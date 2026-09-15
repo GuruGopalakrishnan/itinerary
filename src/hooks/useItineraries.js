@@ -1,14 +1,23 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
+import { SAMPLE_ITINERARIES } from '../data/sampleData'
 
 export function useItineraries() {
   const [itineraries, setItineraries] = useState([])
   const [loading, setLoading] = useState(true)
+  const [isDemo, setIsDemo] = useState(false)
 
   const refetch = useCallback(async () => {
     setLoading(true)
-    const data = await api.getItineraries()
-    setItineraries(data)
+    try {
+      const data = await api.getItineraries()
+      setItineraries(data)
+      setIsDemo(false)
+    } catch {
+      // No backend reachable (e.g. the static GitHub Pages preview) — show sample data instead.
+      setItineraries(SAMPLE_ITINERARIES)
+      setIsDemo(true)
+    }
     setLoading(false)
   }, [])
 
@@ -33,5 +42,5 @@ export function useItineraries() {
     setItineraries((prev) => prev.filter((it) => it.id !== id))
   }
 
-  return { itineraries, loading, addItinerary, updateItinerary, deleteItinerary, refetch }
+  return { itineraries, loading, isDemo, addItinerary, updateItinerary, deleteItinerary, refetch }
 }
