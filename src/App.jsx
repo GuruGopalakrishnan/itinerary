@@ -90,6 +90,7 @@ function App() {
               itineraries={itineraries}
               templateCount={templates.length}
               loading={loading}
+              settings={settings}
               onOpen={openPreview}
               onNew={() => setShowNewModal(true)}
             />

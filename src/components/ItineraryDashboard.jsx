@@ -1,12 +1,30 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { EditIcon, DownloadIcon } from './icons'
+import { buildItineraryDocx } from '../lib/buildDocx'
 
 function formatDate(iso) {
   if (!iso) return ''
   return new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-export default function ItineraryDashboard({ itineraries, templateCount, loading, onOpen, onNew }) {
+export default function ItineraryDashboard({ itineraries, templateCount, loading, settings, onOpen, onNew }) {
+  const [downloadingId, setDownloadingId] = useState(null)
+
+  async function handleDownload(it) {
+    setDownloadingId(it.id)
+    try {
+      const blob = await buildItineraryDocx(it, settings)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${it.client_name} - ${it.destination}.docx`
+      a.click()
+      URL.revokeObjectURL(url)
+    } finally {
+      setDownloadingId(null)
+    }
+  }
+
   const stats = useMemo(() => {
     const now = new Date()
     const sentThisMonth = itineraries.filter((it) => {
@@ -83,7 +101,13 @@ export default function ItineraryDashboard({ itineraries, templateCount, loading
                       <button type="button" className="icon-btn-sm" title="Open" onClick={() => onOpen(it)}>
                         <EditIcon />
                       </button>
-                      <button type="button" className="icon-btn-sm" title="Download">
+                      <button
+                        type="button"
+                        className="icon-btn-sm"
+                        title="Download Word Doc"
+                        disabled={downloadingId === it.id}
+                        onClick={() => handleDownload(it)}
+                      >
                         <DownloadIcon />
                       </button>
                     </div>

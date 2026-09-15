@@ -1,3 +1,6 @@
+import { useState } from 'react'
+import { buildItineraryDocx } from '../lib/buildDocx'
+
 function lines(text) {
   return (text || '').split('\n').map((l) => l.trim()).filter(Boolean)
 }
@@ -59,6 +62,22 @@ export default function ItineraryPreview({ itinerary, settings, onStatusChange, 
   const hasInclusionsPage = lines(itinerary.inclusions).length > 0 || lines(itinerary.exclusions).length > 0
   const hasCostPage = (itinerary.cost_rows || []).length > 0 || itinerary.child_policy
   const hasTermsPage = bookingTerms.length > 0 || cancellationPolicy.length > 0 || importantNotes.length > 0
+  const [downloading, setDownloading] = useState(false)
+
+  async function handleDownloadWord() {
+    setDownloading(true)
+    try {
+      const blob = await buildItineraryDocx(itinerary, settings)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${itinerary.client_name} - ${itinerary.destination}.docx`
+      a.click()
+      URL.revokeObjectURL(url)
+    } finally {
+      setDownloading(false)
+    }
+  }
 
   return (
     <div className="dashboard">
@@ -84,8 +103,11 @@ export default function ItineraryPreview({ itinerary, settings, onStatusChange, 
           <button type="button" className="btn-secondary" onClick={onDelete}>
             Delete
           </button>
-          <button type="button" className="btn-primary" onClick={() => window.print()}>
-            Download PDF
+          <button type="button" className="btn-secondary" onClick={() => window.print()}>
+            Print / PDF
+          </button>
+          <button type="button" className="btn-primary" disabled={downloading} onClick={handleDownloadWord}>
+            {downloading ? 'Preparing…' : 'Download Word Doc'}
           </button>
         </div>
       </div>
