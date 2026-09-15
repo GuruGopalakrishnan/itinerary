@@ -222,6 +222,7 @@ async function init() {
   // Templates: extend with package title, tagline, inclusions/exclusions, cost table, child policy, visa info.
   await addColumn('templates', 'package_title TEXT')
   await addColumn('templates', 'tagline TEXT')
+  await addColumn('templates', 'assembly_point TEXT')
   await addColumn('templates', 'inclusions TEXT')
   await addColumn('templates', 'exclusions TEXT')
   await addColumn('templates', 'cost_rows TEXT')

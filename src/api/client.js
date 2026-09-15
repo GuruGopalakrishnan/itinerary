@@ -27,4 +27,15 @@ export const api = {
 
   getSettings: () => request('/settings'),
   updateSettings: (data) => request('/settings', { method: 'PUT', body: JSON.stringify(data) }),
+
+  parseDocxFiles: async (files) => {
+    const form = new FormData()
+    for (const file of files) form.append('files', file)
+    const res = await fetch(`${API_BASE}/import/parse`, { method: 'POST', body: form })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      throw new Error(body.error || `Request failed: ${res.status}`)
+    }
+    return res.json()
+  },
 }

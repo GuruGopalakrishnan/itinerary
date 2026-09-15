@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { api } from '../api/client'
 
 function emptyDraft() {
   return {
@@ -7,6 +8,7 @@ function emptyDraft() {
     default_duration: '',
     package_title: '',
     tagline: '',
+    assembly_point: '',
     days: [{ title: 'Day 1', heading: '', activities: '', meal_plan: '', photos: [] }],
     inclusions: '',
     exclusions: '',
@@ -29,6 +31,13 @@ export default function TemplateLibrary({ templates, onAdd, onUpdate, onDelete }
   const [selectedId, setSelectedId] = useState(templates[0]?.id ?? null)
   const [draft, setDraft] = useState(null)
   const [isNew, setIsNew] = useState(false)
+  const [sourceFilename, setSourceFilename] = useState(null)
+
+  const [importOpen, setImportOpen] = useState(false)
+  const [parsing, setParsing] = useState(false)
+  const [importResults, setImportResults] = useState([])
+  const [importedFiles, setImportedFiles] = useState(new Set())
+  const [importError, setImportError] = useState('')
 
   useEffect(() => {
     if (isNew) return
@@ -49,12 +58,37 @@ export default function TemplateLibrary({ templates, onAdd, onUpdate, onDelete }
   function selectTemplate(t) {
     setIsNew(false)
     setSelectedId(t.id)
+    setSourceFilename(null)
   }
 
   function startNew() {
     setIsNew(true)
     setSelectedId(null)
+    setSourceFilename(null)
     setDraft(emptyDraft())
+  }
+
+  async function handleParseFiles(fileList) {
+    const files = Array.from(fileList || [])
+    if (files.length === 0) return
+    setParsing(true)
+    setImportError('')
+    try {
+      const { results } = await api.parseDocxFiles(files)
+      setImportResults(results)
+    } catch {
+      setImportError('Could not reach the import service — this needs the backend running (npm run dev locally), not just the static preview.')
+    } finally {
+      setParsing(false)
+    }
+  }
+
+  function reviewImportResult(item) {
+    setIsNew(true)
+    setSelectedId(null)
+    setSourceFilename(item.filename)
+    setDraft({ ...emptyDraft(), ...item.parsed })
+    setImportOpen(false)
   }
 
   function updateDay(index, field, value) {
@@ -107,6 +141,10 @@ export default function TemplateLibrary({ templates, onAdd, onUpdate, onDelete }
       const created = await onAdd(draft)
       setIsNew(false)
       setSelectedId(created.id)
+      if (sourceFilename) {
+        setImportedFiles((prev) => new Set(prev).add(sourceFilename))
+        setSourceFilename(null)
+      }
     } else {
       await onUpdate(draft.id, draft)
     }
@@ -122,10 +160,70 @@ export default function TemplateLibrary({ templates, onAdd, onUpdate, onDelete }
 
   return (
     <div className="dashboard">
-      <div className="hint-note">
-        This is your library — paste a short day-by-day itinerary once per destination (add photos too). Every
-        new itinerary you generate reuses this as the starting content.
+      <div className="hint-note" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <span>
+          This is your library — paste a short day-by-day itinerary once per destination (add photos too). Every
+          new itinerary you generate reuses this as the starting content.
+        </span>
+        <button type="button" className="btn-secondary" style={{ flexShrink: 0 }} onClick={() => setImportOpen(true)}>
+          Import from Word
+        </button>
       </div>
+
+      {importOpen && (
+        <div className="modal-overlay" onClick={() => setImportOpen(false)}>
+          <div className="modal import-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Import Destination Templates from Word</h2>
+              <button type="button" className="modal-close" onClick={() => setImportOpen(false)}>
+                &times;
+              </button>
+            </div>
+            <div className="itin-form">
+              <p className="muted" style={{ fontSize: 13 }}>
+                Select as many .docx itinerary files as you like. Each one is scanned for its day-by-day structure,
+                inclusions/exclusions, and cost table — you review and save each one before it's added to your
+                library. Booking Terms / Cancellation Policy / Important Notes are skipped here since those come
+                from Settings.
+              </p>
+              <input type="file" accept=".docx" multiple onChange={(e) => handleParseFiles(e.target.files)} />
+              {parsing && <p className="muted">Parsing…</p>}
+              {importError && <p className="form-error">{importError}</p>}
+
+              {importResults.length > 0 && (
+                <div className="import-results-list">
+                  {importResults.map((item) => (
+                    <div className="import-result-row" key={item.filename}>
+                      <div className="import-result-info">
+                        <span className="import-result-name">{item.filename}</span>
+                        {item.ok ? (
+                          <span className="muted" style={{ fontSize: 12 }}>
+                            {item.parsed.destination || 'Untitled'} · {item.parsed.days?.length || 0} day
+                            {item.parsed.days?.length === 1 ? '' : 's'}
+                          </span>
+                        ) : (
+                          <span className="form-error" style={{ fontSize: 12 }}>
+                            Could not parse: {item.error}
+                          </span>
+                        )}
+                      </div>
+                      {item.ok &&
+                        (importedFiles.has(item.filename) ? (
+                          <span className="status-badge status-confirmed">Imported</span>
+                        ) : (
+                          <button type="button" className="btn-secondary" onClick={() => reviewImportResult(item)}>
+                            Review &amp; Save
+                          </button>
+                        ))}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="tpl-layout">
         <div className="tpl-list">
           {templates.map((t) => (
@@ -200,6 +298,14 @@ export default function TemplateLibrary({ templates, onAdd, onUpdate, onDelete }
             <label className="field-label">
               Tagline <span className="muted">(optional quote under the title)</span>
               <input type="text" value={draft.tagline} onChange={(e) => setDraft({ ...draft, tagline: e.target.value })} />
+            </label>
+            <label className="field-label">
+              Assembly Point <span className="muted">(e.g. Assemble at Chennai International Airport at 0800pm)</span>
+              <input
+                type="text"
+                value={draft.assembly_point}
+                onChange={(e) => setDraft({ ...draft, assembly_point: e.target.value })}
+              />
             </label>
 
             {draft.days.map((day, i) => (

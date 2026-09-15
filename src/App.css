@@ -595,6 +595,44 @@
   gap: 16px;
 }
 
+.import-modal {
+  max-width: 640px;
+}
+
+.import-results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.import-result-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+
+.import-result-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.import-result-name {
+  font-weight: 600;
+  color: var(--text-h);
+  font-size: 13.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .dest-picker {
   display: grid;
   grid-template-columns: 1fr 1fr;

@@ -85,6 +85,7 @@ export const SAMPLE_TEMPLATES = [
     default_duration: '5 Days / 4 Nights',
     package_title: "ABCD'S BANGKOK & PATTAYA (4 NIGHT & 5 DAYS)",
     tagline: 'New places, new friends, unforgettable moments',
+    assembly_point: 'Assemble at Chennai International Airport at 0800pm',
     days: THAILAND_DAYS,
     inclusions: [
       '04 Nights in above mentioned hotel',
@@ -115,6 +116,7 @@ export const SAMPLE_TEMPLATES = [
     default_duration: '4 Days / 3 Nights',
     package_title: "ABCD'S OOTY - KODAIKANAL (3 NIGHT & 4 DAYS)",
     tagline: 'Cool hills, warm memories',
+    assembly_point: '',
     days: [
       {
         title: 'Day 1',
